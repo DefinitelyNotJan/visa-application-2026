@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Jan Lönnqvist · Senior Designer · Visa</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --blue: #1a1f71;
+            --blue-deep: #0a0d2c;
+            --gold: #f7b600;
+            --white: #ffffff;
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--blue-deep);
+            color: var(--white);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* CUSTOM CURSOR */
+        .cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gold);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100000;
+            transition: transform 0.15s, background 0.15s;
+            mix-blend-mode: difference;
+        }
+        .cursor-dot {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: var(--gold);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100001;
+        }
+        .cursor.active {
+            transform: scale(2.5);
+            background: rgba(247,182,0,0.2);
+        }
+
+        /* NETWORK CANVAS - Payment nodes visualization */
+        #networkCanvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* LOADER */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: var(--blue-deep);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #loader.done {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s;
+        }
+        .loader-card {
+            width: 280px;
+            height: 175px;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            border-radius: 16px;
+            position: relative;
+            animation: cardPulse 2s ease-in-out infinite;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+        }
+        @keyframes cardPulse {
+            0%, 100% { transform: scale(1) rotateY(0deg); }
+            50% { transform: scale(1.02) rotateY(5deg); }
+        }
+        .loader-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(247,182,0,0.3), transparent);
+            animation: cardScan 1.5s ease-in-out infinite;
+        }
+        @keyframes cardScan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .loader-text {
+            margin-top: 40px;
+            font-size: 11px;
+            letter-spacing: 0.5em;
+            opacity: 0.4;
+        }
+
+        /* PROGRESS */
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0;
+            background: linear-gradient(90deg, var(--gold), #fff, var(--gold));
+            z-index: 10000;
+        }
+
+        /* HEADER */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 25px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 9000;
+            transition: all 0.4s;
+        }
+        .header.scrolled {
+            padding: 15px 50px;
+            background: rgba(10,13,44,0.95);
+            backdrop-filter: blur(20px);
+        }
+        .header-logo img { height: 24px; }
+        .header-cta {
+            font-size: 10px;
+            letter-spacing: 0.3em;
+            padding: 12px 25px;
+            border: 1px solid rgba(255,255,255,0.2);
+            text-decoration: none;
+            color: var(--white);
+            transition: all 0.3s;
+        }
+        .header-cta:hover {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: var(--blue);
+        }
+
+        /* 3D CARD STACK - Interactive */
+        .card-stack {
+            position: fixed;
+            right: 8vw;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 320px;
+            height: 200px;
+            perspective: 1500px;
+            z-index: 100;
+        }
+        .stack-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transform-style: preserve-3d;
+            cursor: none;
+        }
+        .stack-card .front,
+        .stack-card .back {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            backface-visibility: hidden;
+            overflow: hidden;
+        }
+        .stack-card .back {
+            transform: rotateY(180deg);
+            background: linear-gradient(135deg, #1a1f71, #2a3090);
+        }
+        .stack-card .back::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: #0a0d2c;
+        }
+        .stack-card .back::after {
+            content: 'AUTHORIZED SIGNATURE';
+            position: absolute;
+            bottom: 30px;
+            left: 25px;
+            font-size: 8px;
+            letter-spacing: 0.2em;
+            opacity: 0.5;
+        }
+
+        /* Card 1 - Infinite Black */
+        .sc-1 .front {
+            background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 40%, #0a0a0a 100%);
+            box-shadow: 0 50px 100px rgba(0,0,0,0.6);
+        }
+        /* Card 2 - Signature Blue */
+        .sc-2 .front {
+            background: linear-gradient(145deg, #1a1f71 0%, #2a3090 40%, #0d1347 100%);
+            box-shadow: 0 40px 80px rgba(26,31,113,0.4);
+        }
+        /* Card 3 - Platinum */
+        .sc-3 .front {
+            background: linear-gradient(145deg, #6a6a7a 0%, #9a9aaa 40%, #4a4a5a 100%);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+        }
+        /* Card 4 - Gold */
+        .sc-4 .front {
+            background: linear-gradient(145deg, #a67c00 0%, #d4a017 40%, #705300 100%);
+            box-shadow: 0 25px 50px rgba(166,124,0,0.3);
+        }
+
+        .card-chip {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            width: 50px;
+            height: 40px;
+            background: linear-gradient(135deg, #d4af37, #f7d774, #d4af37);
+            border-radius: 8px;
+        }
+        .card-chip::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            background: linear-gradient(90deg, #c9a227 0px, #c9a227 3px, #e8c547 3px, #e8c547 6px);
+            background-size: 6px 100%;
+            border-radius: 4px;
+        }
+        .card-contactless {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            opacity: 0.6;
+        }
+        .card-contactless svg { width: 30px; height: 30px; }
+        .card-type {
+            position: absolute;
+            top: 30px;
+            left: 85px;
+            font-size: 9px;
+            letter-spacing: 3px;
+            opacity: 0.6;
+        }
+        .card-number {
+            position: absolute;
+            bottom: 60px;
+            left: 25px;
+            font-size: 14px;
+            letter-spacing: 4px;
+            opacity: 0.8;
+        }
+        .card-logo {
+            position: absolute;
+            bottom: 20px;
+            right: 25px;
+        }
+        .card-logo img { height: 28px; filter: brightness(0) invert(1); }
+        .card-shimmer {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 55%, transparent 60%);
+            transform: translateX(-100%);
+            transition: transform 0.8s;
+        }
+        .stack-card:hover .card-shimmer {
+            transform: translateX(100%);
+        }
+
+        /* SECTIONS */
+        section {
+            min-height: 100vh;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* HERO */
+        .hero {
+            display: flex;
+            align-items: center;
+            padding: 0 8vw;
+            padding-right: 45vw;
+        }
+        .hero-content { max-width: 600px; }
+        .hero-eyebrow {
+            font-size: 11px;
+            letter-spacing: 0.5em;
+            color: var(--gold);
+            margin-bottom: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .hero-title {
+            font-size: clamp(48px, 6vw, 80px);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+        .hero-title .line {
+            display: block;
+            overflow: hidden;
+        }
+        .hero-title .line span {
+            display: inline-block;
+            transform: translateY(110%);
+        }
+        .hero-title .gold { color: var(--gold); }
+        .hero-sub {
+            font-size: 17px;
+            font-weight: 300;
+            line-height: 1.9;
+            margin-top: 35px;
+            opacity: 0;
+            max-width: 450px;
+        }
+        .hero-stats {
+            display: flex;
+            gap: 60px;
+            margin-top: 60px;
+        }
+        .stat {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        .stat-num {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--gold);
+            line-height: 1;
+        }
+        .stat-num span {
+            display: inline-block;
+        }
+        .stat-label {
+            font-size: 10px;
+            letter-spacing: 0.3em;
+            opacity: 0.4;
+            margin-top: 10px;
+        }
+        .scroll-hint {
+            position: absolute;
+            bottom: 50px;
+            left: 8vw;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0;
+        }
+        .scroll-line {
+            width: 60px;
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .scroll-line::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 100%;
+            background: var(--gold);
+            animation: scrollMove 2s infinite;
+        }
+        @keyframes scrollMove {
+            0% { left: -20px; }
+            50% { left: 60px; }
+            100% { left: 60px; }
+        }
+        .scroll-text {
+            font-size: 10px;
+            letter-spacing: 0.4em;
+            opacity: 0.4;
+        }
+
+        /* APPROACH - Word reveal */
+        .approach {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 0 8vw;
+            background: var(--white);
+            color: var(--blue);
+        }
+        .approach-inner { max-width: 1000px; }
+        .approach-label {
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: var(--gold);
+            margin-bottom: 50px;
+        }
+        .approach-text {
+            font-size: clamp(36px, 5vw, 64px);
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .approach-text .word {
+            display: inline-block;
+            opacity: 0.08;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            margin-right: 0.2em;
+        }
+        .approach-text .word.lit { opacity: 1; }
+        .approach-text .word.gold.lit { color: var(--gold); }
+
+        /* EXPERIENCE - Horizontal scroll timeline */
+        .experience {
+            padding: 15vh 0;
+            background: linear-gradient(180deg, #f5f6fa 0%, #e8eaef 100%);
+            color: var(--blue);
+            overflow: hidden;
+        }
+        .exp-header {
+            padding: 0 8vw;
+            margin-bottom: 80px;
+        }
+        .exp-label {
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+        .exp-title {
+            font-size: clamp(48px, 7vw, 90px);
+            font-weight: 700;
+            line-height: 1;
+        }
+        .timeline {
+            position: relative;
+            padding: 0 8vw;
+        }
+        .timeline-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(26,31,113,0.1);
+        }
+        .timeline-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0;
+            background: var(--gold);
+            transition: width 0.3s;
+        }
+        .timeline-track {
+            display: flex;
+            gap: 80px;
+            transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .timeline-item {
+            flex-shrink: 0;
+            width: 350px;
+            position: relative;
+            padding-top: 50px;
+        }
+        .timeline-dot {
+            position: absolute;
+            top: -8px;
+            left: 0;
+            width: 16px;
+            height: 16px;
+            background: var(--white);
+            border: 3px solid rgba(26,31,113,0.2);
+            border-radius: 50%;
+            transition: all 0.4s;
+        }
+        .timeline-item.active .timeline-dot {
+            background: var(--gold);
+            border-color: var(--gold);
+            box-shadow: 0 0 30px rgba(247,182,0,0.5);
+            transform: scale(1.3);
+        }
+        .timeline-year {
+            font-size: 12px;
+            letter-spacing: 0.2em;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+        .timeline-company {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            transition: transform 0.4s;
+        }
+        .timeline-item:hover .timeline-company {
+            transform: translateX(10px);
+        }
+        .timeline-role {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+        .timeline-desc {
+            font-size: 14px;
+            line-height: 1.8;
+            opacity: 0.5;
+        }
+
+        /* CAPABILITIES - 3D tilt cards */
+        .capabilities {
+            padding: 15vh 8vw;
+            background: var(--blue);
+            position: relative;
+            overflow: hidden;
+        }
+        .cap-bg-text {
+            position: absolute;
+            font-size: 25vw;
+            font-weight: 700;
+            color: rgba(255,255,255,0.02);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .cap-header {
+            position: relative;
+            z-index: 1;
+            margin-bottom: 80px;
+        }
+        .cap-label {
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+        .cap-title {
+            font-size: clamp(48px, 7vw, 90px);
+            font-weight: 700;
+            line-height: 1;
+        }
+        .cap-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            position: relative;
+            z-index: 1;
+        }
+        .cap-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            padding: 50px 40px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .cap-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(247,182,0,0.1), transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .cap-card:hover::before { opacity: 1; }
+        .cap-card:hover {
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        }
+        .cap-num {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--gold);
+            opacity: 0.3;
+            margin-bottom: 20px;
+        }
+        .cap-name {
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .cap-desc {
+            font-size: 14px;
+            line-height: 1.8;
+            opacity: 0.5;
+        }
+
+        /* DATA VIZ SECTION */
+        .dataviz {
+            padding: 20vh 8vw;
+            background: linear-gradient(180deg, var(--blue) 0%, var(--blue-deep) 100%);
+            text-align: center;
+        }
+        .dataviz-label {
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: var(--gold);
+            margin-bottom: 40px;
+        }
+        .dataviz-title {
+            font-size: clamp(36px, 5vw, 60px);
+            font-weight: 700;
+            margin-bottom: 80px;
+        }
+        .dataviz-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .dataviz-item {
+            text-align: center;
+        }
+        .dataviz-circle {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 25px;
+            position: relative;
+        }
+        .dataviz-circle svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+        .dataviz-circle circle {
+            fill: none;
+            stroke-width: 6;
+        }
+        .dataviz-circle .bg { stroke: rgba(255,255,255,0.1); }
+        .dataviz-circle .fill {
+            stroke: var(--gold);
+            stroke-linecap: round;
+            stroke-dasharray: 314;
+            stroke-dashoffset: 314;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .dataviz-circle.animated .fill {
+            stroke-dashoffset: var(--offset);
+        }
+        .dataviz-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .dataviz-name {
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            opacity: 0.6;
+        }
+
+        /* WHY VISA */
+        .why {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15vh 8vw;
+            background: var(--white);
+            color: var(--blue);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .why-pattern {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(26,31,113,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(26,31,113,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .why-inner {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 1s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .why-inner.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .why-label {
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: var(--gold);
+            margin-bottom: 40px;
+        }
+        .why-statement {
+            font-size: clamp(40px, 6vw, 72px);
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 30px;
+        }
+        .why-statement .gold { color: var(--gold); }
+        .why-text {
+            font-size: 17px;
+            line-height: 1.9;
+            opacity: 0.6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* CONTACT */
+        .contact {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15vh 8vw;
+            background: var(--blue-deep);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .contact-rays {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            transform: translate(-50%, -50%);
+            background: conic-gradient(from 0deg, transparent, rgba(247,182,0,0.03), transparent, rgba(247,182,0,0.03), transparent);
+            animation: raysSpin 60s linear infinite;
+        }
+        @keyframes raysSpin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        .contact-inner {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+        }
+        .contact-logo {
+            height: 50px;
+            margin-bottom: 50px;
+            opacity: 0.2;
+        }
+        .contact-title {
+            font-size: clamp(56px, 10vw, 120px);
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 25px;
+        }
+        .contact-title .gold { color: var(--gold); }
+        .contact-sub {
+            font-size: 17px;
+            line-height: 1.9;
+            opacity: 0.5;
+            margin-bottom: 50px;
+        }
+        .contact-btn {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            padding: 22px 60px;
+            background: var(--gold);
+            color: var(--blue);
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .contact-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+        .contact-btn:hover::before {
+            transform: translateX(100%);
+        }
+        .contact-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 25px 50px rgba(247,182,0,0.4);
+        }
+        .contact-links {
+            margin-top: 60px;
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+        }
+        .contact-links a {
+            font-size: 12px;
+            color: var(--white);
+            opacity: 0.3;
+            text-decoration: none;
+            transition: all 0.3s;
+            letter-spacing: 0.1em;
+        }
+        .contact-links a:hover {
+            opacity: 1;
+            color: var(--gold);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .card-stack { display: none; }
+            .hero { padding-right: 8vw; }
+        }
+        @media (max-width: 1024px) {
+            .cap-grid { grid-template-columns: 1fr; }
+            .dataviz-grid { grid-template-columns: repeat(2, 1fr); }
+            .timeline-track { gap: 50px; }
+            .timeline-item { width: 280px; }
+        }
+        @media (max-width: 768px) {
+            body { cursor: auto; }
+            .cursor, .cursor-dot { display: none; }
+            .header { padding: 20px; }
+            .hero-stats { flex-direction: column; gap: 30px; }
+            .dataviz-grid { grid-template-columns: 1fr 1fr; gap: 30px; }
+            .contact-links { flex-direction: column; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="networkCanvas"></canvas>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<div class="progress" id="progress"></div>
+
+<header class="header" id="header">
+    <div class="header-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa">
+    </div>
+    <a href="mailto:jan.lonnqvist@windowslive.com" class="header-cta">GET IN TOUCH</a>
+</header>
+
+<!-- 3D CARD STACK -->
+<div class="card-stack" id="cardStack">
+    <div class="stack-card sc-1" style="--i:0">
+        <div class="front">
+            <div class="card-shimmer"></div>
+            <div class="card-chip"></div>
+            <div class="card-type">INFINITE</div>
+            <div class="card-contactless">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 12a6 6 0 0112 0M3 12a9 9 0 0118 0M9 12a3 3 0 016 0"/>
+                </svg>
+            </div>
+            <div class="card-number">•••• •••• •••• 8901</div>
+            <div class="card-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa"></div>
+        </div>
+        <div class="back"></div>
+    </div>
+    <div class="stack-card sc-2" style="--i:1">
+        <div class="front">
+            <div class="card-shimmer"></div>
+            <div class="card-chip"></div>
+            <div class="card-type">SIGNATURE</div>
+            <div class="card-contactless">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 12a6 6 0 0112 0M3 12a9 9 0 0118 0M9 12a3 3 0 016 0"/>
+                </svg>
+            </div>
+            <div class="card-number">•••• •••• •••• 4532</div>
+            <div class="card-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa"></div>
+        </div>
+        <div class="back"></div>
+    </div>
+    <div class="stack-card sc-3" style="--i:2">
+        <div class="front">
+            <div class="card-shimmer"></div>
+            <div class="card-chip"></div>
+            <div class="card-type">PLATINUM</div>
+            <div class="card-contactless">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 12a6 6 0 0112 0M3 12a9 9 0 0118 0M9 12a3 3 0 016 0"/>
+                </svg>
+            </div>
+            <div class="card-number">•••• •••• •••• 7621</div>
+            <div class="card-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa"></div>
+        </div>
+        <div class="back"></div>
+    </div>
+    <div class="stack-card sc-4" style="--i:3">
+        <div class="front">
+            <div class="card-shimmer"></div>
+            <div class="card-chip"></div>
+            <div class="card-type">GOLD</div>
+            <div class="card-contactless">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 12a6 6 0 0112 0M3 12a9 9 0 0118 0M9 12a3 3 0 016 0"/>
+                </svg>
+            </div>
+            <div class="card-number">•••• •••• •••• 2847</div>
+            <div class="card-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa"></div>
+        </div>
+        <div class="back"></div>
+    </div>
+</div>
+
+<div id="loader">
+    <div class="loader-card"></div>
+    <div class="loader-text">INITIALIZING</div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-eyebrow">SENIOR DESIGNER · LONDON</div>
+        <h1 class="hero-title">
+            <span class="line"><span>Design that</span></span>
+            <span class="line"><span>wins <span class="gold">deals.</span></span></span>
+        </h1>
+        <p class="hero-sub">12 years transforming complex propositions into visual narratives that stakeholders remember and approve.</p>
+        <div class="hero-stats">
+            <div class="stat">
+                <div class="stat-num"><span data-value="12">0</span>+</div>
+                <div class="stat-label">YEARS EXPERIENCE</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num"><span data-value="40">0</span>+</div>
+                <div class="stat-label">GLOBAL MARKETS</div>
+            </div>
+        </div>
+    </div>
+    <div class="scroll-hint">
+        <div class="scroll-line"></div>
+        <span class="scroll-text">SCROLL</span>
+    </div>
+</section>
+
+<!-- APPROACH -->
+<section class="approach">
+    <div class="approach-inner">
+        <div class="approach-label">MY APPROACH</div>
+        <p class="approach-text" id="approachText">
+            <span class="word">Pitch</span>
+            <span class="word">decks</span>
+            <span class="word">win</span>
+            <span class="word">when</span>
+            <span class="word gold">design</span>
+            <span class="word">meets</span>
+            <span class="word gold">strategy.</span>
+            <span class="word">I</span>
+            <span class="word">transform</span>
+            <span class="word">technical</span>
+            <span class="word">complexity</span>
+            <span class="word">into</span>
+            <span class="word gold">visual</span>
+            <span class="word gold">clarity</span>
+            <span class="word">that</span>
+            <span class="word">decision-makers</span>
+            <span class="word gold">act</span>
+            <span class="word gold">on.</span>
+        </p>
+    </div>
+</section>
+
+<!-- EXPERIENCE -->
+<section class="experience">
+    <div class="exp-header">
+        <div class="exp-label">EXPERIENCE</div>
+        <h2 class="exp-title">Track Record</h2>
+    </div>
+    <div class="timeline">
+        <div class="timeline-line">
+            <div class="timeline-progress" id="timelineProgress"></div>
+        </div>
+        <div class="timeline-track" id="timelineTrack">
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2024 — PRESENT</div>
+                <div class="timeline-company">GLS Group</div>
+                <div class="timeline-role">Group Graphic Designer</div>
+                <div class="timeline-desc">International design across 12+ European markets. Unified visual systems. Reviewing designers and agencies across countries.</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2022 — 2024</div>
+                <div class="timeline-company">Rituals</div>
+                <div class="timeline-role">Visual Specialist</div>
+                <div class="timeline-desc">Premium brand presentations across 40+ global markets. Campaign rollouts. Moments and markets.</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2022</div>
+                <div class="timeline-company">HelloFresh</div>
+                <div class="timeline-role">Creative / DTP</div>
+                <div class="timeline-desc">Print production. Team leading. Project coordination across fast-paced delivery cycles.</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2019 — 2020</div>
+                <div class="timeline-company">IKEA</div>
+                <div class="timeline-role">Graphic Artist</div>
+                <div class="timeline-desc">Visual design for the world's largest furniture retailer. DTP, graphic production.</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2019</div>
+                <div class="timeline-company">Valve Agency</div>
+                <div class="timeline-role">Art Director</div>
+                <div class="timeline-desc">Creative direction at Helsinki marketing agency. Concept to production.</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2013 — 2019</div>
+                <div class="timeline-company">Foundation</div>
+                <div class="timeline-role">Designer / DTP Specialist</div>
+                <div class="timeline-desc">Print, editorial, packaging. Six years mastering the craft at Planex, Pixmill, Lönnberg, Multiprint.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CAPABILITIES -->
+<section class="capabilities">
+    <div class="cap-bg-text">CAPABILITIES</div>
+    <div class="cap-header">
+        <div class="cap-label">WHAT I BRING TO VISA</div>
+        <h2 class="cap-title">Capabilities</h2>
+    </div>
+    <div class="cap-grid">
+        <div class="cap-card" data-tilt>
+            <div class="cap-num">01</div>
+            <div class="cap-name">Pitch Deck Design</div>
+            <div class="cap-desc">Strategic presentations that win. Complex business propositions translated into clear visual narratives that stakeholders approve.</div>
+        </div>
+        <div class="cap-card" data-tilt>
+            <div class="cap-num">02</div>
+            <div class="cap-name">Data Visualization</div>
+            <div class="cap-desc">Infographics, customer journey flows, technical diagrams. Making complex information instantly understandable.</div>
+        </div>
+        <div class="cap-card" data-tilt>
+            <div class="cap-num">03</div>
+            <div class="cap-name">Motion & Video</div>
+            <div class="cap-desc">Animation, video editing, storyboarding. Bringing static concepts to life for presentations and campaigns.</div>
+        </div>
+        <div class="cap-card" data-tilt>
+            <div class="cap-num">04</div>
+            <div class="cap-name">Global Scale</div>
+            <div class="cap-desc">40+ markets at Rituals. 12+ at GLS. Proven ability to maintain brand consistency across regions and formats.</div>
+        </div>
+    </div>
+</section>
+
+<!-- DATA VIZ -->
+<section class="dataviz">
+    <div class="dataviz-label">BY THE NUMBERS</div>
+    <h2 class="dataviz-title">Proven Impact</h2>
+    <div class="dataviz-grid">
+        <div class="dataviz-item">
+            <div class="dataviz-circle" style="--offset: 62.8">
+                <svg viewBox="0 0 100 100">
+                    <circle class="bg" cx="50" cy="50" r="45"/>
+                    <circle class="fill" cx="50" cy="50" r="45"/>
+                </svg>
+                <div class="dataviz-value">12+</div>
+            </div>
+            <div class="dataviz-name">Years</div>
+        </div>
+        <div class="dataviz-item">
+            <div class="dataviz-circle" style="--offset: 31.4">
+                <svg viewBox="0 0 100 100">
+                    <circle class="bg" cx="50" cy="50" r="45"/>
+                    <circle class="fill" cx="50" cy="50" r="45"/>
+                </svg>
+                <div class="dataviz-value">40+</div>
+            </div>
+            <div class="dataviz-name">Markets</div>
+        </div>
+        <div class="dataviz-item">
+            <div class="dataviz-circle" style="--offset: 94.2">
+                <svg viewBox="0 0 100 100">
+                    <circle class="bg" cx="50" cy="50" r="45"/>
+                    <circle class="fill" cx="50" cy="50" r="45"/>
+                </svg>
+                <div class="dataviz-value">6</div>
+            </div>
+            <div class="dataviz-name">Industries</div>
+        </div>
+        <div class="dataviz-item">
+            <div class="dataviz-circle" style="--offset: 0">
+                <svg viewBox="0 0 100 100">
+                    <circle class="bg" cx="50" cy="50" r="45"/>
+                    <circle class="fill" cx="50" cy="50" r="45"/>
+                </svg>
+                <div class="dataviz-value">∞</div>
+            </div>
+            <div class="dataviz-name">Dedication</div>
+        </div>
+    </div>
+</section>
+
+<!-- WHY -->
+<section class="why">
+    <div class="why-pattern"></div>
+    <div class="why-inner">
+        <div class="why-label">WHY VISA</div>
+        <h2 class="why-statement">You need design that <span class="gold">wins deals.</span></h2>
+        <p class="why-text">From agency pitches to Rituals' global campaigns, I've spent 12 years translating complex propositions into visual narratives that stakeholders approve. Ready for London.</p>
+    </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact">
+    <div class="contact-rays"></div>
+    <div class="contact-inner">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" class="contact-logo">
+        <h2 class="contact-title">Let's <span class="gold">Connect</span></h2>
+        <p class="contact-sub">Ready to bring 12 years of visual storytelling to Visa's strategic pitch team.</p>
+        <a href="mailto:jan.lonnqvist@windowslive.com" class="contact-btn">START CONVERSATION →</a>
+        <div class="contact-links">
+            <a href="https://definitelynotjan.github.io/Portfolio/" target="_blank">Portfolio</a>
+            <a href="mailto:jan.lonnqvist@windowslive.com">Email</a>
+        </div>
+    </div>
+</section>
+
+<script>
+// Prevent right-click
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// ============ NETWORK VISUALIZATION ============
+const canvas = document.getElementById('networkCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Network nodes
+const nodes = [];
+const nodeCount = 60;
+for (let i = 0; i < nodeCount; i++) {
+    nodes.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        r: Math.random() * 2 + 1,
+        pulse: Math.random() * Math.PI * 2
+    });
+}
+
+let mouseX = W / 2;
+let mouseY = H / 2;
+
+function drawNetwork() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Update and draw nodes
+    nodes.forEach((n, i) => {
+        n.x += n.vx;
+        n.y += n.vy;
+        n.pulse += 0.02;
+
+        // Bounce off edges
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
+
+        // Mouse attraction
+        const dx = mouseX - n.x;
+        const dy = mouseY - n.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 200) {
+            n.vx += dx * 0.00005;
+            n.vy += dy * 0.00005;
+        }
+
+        // Draw connections
+        nodes.forEach((n2, j) => {
+            if (j <= i) return;
+            const d = Math.sqrt((n.x - n2.x) ** 2 + (n.y - n2.y) ** 2);
+            if (d < 150) {
+                ctx.beginPath();
+                ctx.moveTo(n.x, n.y);
+                ctx.lineTo(n2.x, n2.y);
+                ctx.strokeStyle = `rgba(247, 182, 0, ${0.15 * (1 - d / 150)})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+        });
+
+        // Draw node
+        const pulse = Math.sin(n.pulse) * 0.3 + 0.7;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r * pulse, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(247, 182, 0, ${0.4 * pulse})`;
+        ctx.fill();
+    });
+}
+
+// ============ CURSOR ============
+const cursor = document.getElementById('cursor');
+const cursorDot = document.getElementById('cursorDot');
+let cursorX = 0, cursorY = 0;
+let dotX = 0, dotY = 0;
+
+document.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    dotX = e.clientX;
+    dotY = e.clientY;
+});
+
+function updateCursor() {
+    cursorX += (mouseX - cursorX) * 0.15;
+    cursorY += (mouseY - cursorY) * 0.15;
+    cursor.style.left = cursorX - 10 + 'px';
+    cursor.style.top = cursorY - 10 + 'px';
+    cursorDot.style.left = dotX - 3 + 'px';
+    cursorDot.style.top = dotY - 3 + 'px';
+}
+
+// Cursor hover states
+document.querySelectorAll('a, button, .stack-card, .cap-card, .timeline-item').forEach(el => {
+    el.addEventListener('mouseenter', () => cursor.classList.add('active'));
+    el.addEventListener('mouseleave', () => cursor.classList.remove('active'));
+});
+
+// ============ 3D CARD STACK ============
+const cardStack = document.getElementById('cardStack');
+const stackCards = document.querySelectorAll('.stack-card');
+let scrollY = 0;
+
+function updateCardStack() {
+    const heroEnd = window.innerHeight;
+    const progress = Math.min(1, Math.max(0, scrollY / heroEnd));
+
+    stackCards.forEach((card, i) => {
+        const baseY = i * 15;
+        const baseRotateY = -15 + i * 8;
+        const baseRotateX = 5;
+        const baseRotateZ = -5 + i * 3;
+
+        // Mouse influence
+        const mx = (mouseX / W - 0.5) * 2;
+        const my = (mouseY / H - 0.5) * 2;
+
+        // Spread out on scroll
+        const spreadX = progress * (i - 1.5) * 80;
+        const spreadY = progress * Math.sin(i * 0.8) * 60;
+        const spreadRotate = progress * (i - 1.5) * 15;
+
+        const rotateY = baseRotateY + mx * 15 + spreadRotate;
+        const rotateX = baseRotateX - my * 10;
+
+        card.style.transform = `
+            translateZ(${-i * 30}px)
+            translateY(${baseY + spreadY}px)
+            translateX(${spreadX}px)
+            rotateY(${rotateY}deg)
+            rotateX(${rotateX}deg)
+            rotateZ(${baseRotateZ}deg)
+        `;
+        card.style.opacity = 1 - progress * 0.3;
+    });
+
+    // Fade out card stack
+    cardStack.style.opacity = 1 - progress;
+    cardStack.style.pointerEvents = progress > 0.5 ? 'none' : 'auto';
+}
+
+// ============ 3D TILT ON CAPABILITY CARDS ============
+document.querySelectorAll('.cap-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+
+        const rotateX = (y - 0.5) * -15;
+        const rotateY = (x - 0.5) * 15;
+
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(20px)`;
+        card.style.setProperty('--mouse-x', x * 100 + '%');
+        card.style.setProperty('--mouse-y', y * 100 + '%');
+    });
+
+    card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateZ(0)';
+    });
+});
+
+// ============ APPROACH TEXT REVEAL ============
+const approachSection = document.querySelector('.approach');
+const words = document.querySelectorAll('.approach-text .word');
+
+function updateApproach() {
+    const rect = approachSection.getBoundingClientRect();
+    const sectionProgress = 1 - (rect.top / (H * 0.6));
+    const wordProgress = Math.max(0, Math.min(1, sectionProgress));
+    const litCount = Math.floor(wordProgress * words.length * 1.5);
+
+    words.forEach((w, i) => {
+        w.classList.toggle('lit', i < litCount);
+    });
+}
+
+// ============ TIMELINE HORIZONTAL SCROLL ============
+const timelineTrack = document.getElementById('timelineTrack');
+const timelineProgress = document.getElementById('timelineProgress');
+const timelineItems = document.querySelectorAll('.timeline-item');
+const expSection = document.querySelector('.experience');
+
+function updateTimeline() {
+    const rect = expSection.getBoundingClientRect();
+    const sectionTop = rect.top;
+    const sectionHeight = rect.height;
+
+    if (sectionTop < H * 0.3 && sectionTop > -sectionHeight + H * 0.7) {
+        const progress = Math.max(0, Math.min(1, (H * 0.3 - sectionTop) / (sectionHeight - H * 0.4)));
+        const maxScroll = timelineTrack.scrollWidth - window.innerWidth + 100;
+
+        timelineTrack.style.transform = `translateX(${-progress * maxScroll}px)`;
+        timelineProgress.style.width = progress * 100 + '%';
+
+        // Activate items
+        timelineItems.forEach((item, i) => {
+            const itemProgress = i / (timelineItems.length - 1);
+            item.classList.toggle('active', progress >= itemProgress - 0.1);
+        });
+    }
+}
+
+// ============ DATA VIZ ANIMATION ============
+const dataCircles = document.querySelectorAll('.dataviz-circle');
+const datavizSection = document.querySelector('.dataviz');
+
+function updateDataViz() {
+    const rect = datavizSection.getBoundingClientRect();
+    if (rect.top < H * 0.7) {
+        dataCircles.forEach(circle => circle.classList.add('animated'));
+    }
+}
+
+// ============ WHY SECTION ============
+const whyInner = document.querySelector('.why-inner');
+
+function updateWhy() {
+    const rect = whyInner.getBoundingClientRect();
+    if (rect.top < H * 0.7) {
+        whyInner.classList.add('visible');
+    }
+}
+
+// ============ HERO ANIMATIONS ============
+function animateHero() {
+    // Title lines
+    const lines = document.querySelectorAll('.hero-title .line span');
+    lines.forEach((line, i) => {
+        setTimeout(() => {
+            line.style.transition = 'transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
+            line.style.transform = 'translateY(0)';
+        }, 300 + i * 150);
+    });
+
+    // Eyebrow
+    setTimeout(() => {
+        const eyebrow = document.querySelector('.hero-eyebrow');
+        eyebrow.style.transition = 'all 0.8s';
+        eyebrow.style.opacity = '1';
+        eyebrow.style.transform = 'translateY(0)';
+    }, 200);
+
+    // Sub text
+    setTimeout(() => {
+        const sub = document.querySelector('.hero-sub');
+        sub.style.transition = 'opacity 1s';
+        sub.style.opacity = '1';
+    }, 800);
+
+    // Stats with counting
+    const stats = document.querySelectorAll('.stat');
+    stats.forEach((stat, i) => {
+        setTimeout(() => {
+            stat.style.transition = 'all 0.8s cubic-bezier(0.23, 1, 0.32, 1)';
+            stat.style.opacity = '1';
+            stat.style.transform = 'translateY(0)';
+
+            // Count up
+            const numEl = stat.querySelector('.stat-num span');
+            const target = parseInt(numEl.dataset.value);
+            let current = 0;
+            const increment = target / 40;
+            const counter = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    numEl.textContent = target;
+                    clearInterval(counter);
+                } else {
+                    numEl.textContent = Math.floor(current);
+                }
+            }, 30);
+        }, 1000 + i * 200);
+    });
+
+    // Scroll hint
+    setTimeout(() => {
+        const hint = document.querySelector('.scroll-hint');
+        hint.style.transition = 'opacity 1s';
+        hint.style.opacity = '1';
+    }, 1500);
+}
+
+// ============ PROGRESS BAR ============
+const progressBar = document.getElementById('progress');
+
+function updateProgress() {
+    const total = document.body.scrollHeight - H;
+    progressBar.style.width = (scrollY / total) * 100 + '%';
+}
+
+// ============ HEADER ============
+const header = document.getElementById('header');
+
+function updateHeader() {
+    header.classList.toggle('scrolled', scrollY > 50);
+}
+
+// ============ SCROLL HANDLER ============
+window.addEventListener('scroll', () => {
+    scrollY = window.scrollY;
+    updateProgress();
+    updateHeader();
+    updateCardStack();
+    updateApproach();
+    updateTimeline();
+    updateDataViz();
+    updateWhy();
+});
+
+// ============ ANIMATION LOOP ============
+function animate() {
+    drawNetwork();
+    updateCursor();
+    requestAnimationFrame(animate);
+}
+
+// ============ INIT ============
+setTimeout(() => {
+    document.getElementById('loader').classList.add('done');
+    animate();
+    animateHero();
+    updateCardStack();
+}, 2000);
+</script>
+
+</body>
+</html>
